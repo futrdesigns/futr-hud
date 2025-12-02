@@ -1,10 +1,11 @@
 Config = {}
 
 -- Speed unit (false = KM/H, true = MPH)
-Config.UseMPH = true
+Config.UseMPH = false
 
--- Framework auto-detection ('qbcore', 'qbox', or 'auto')
+-- Framework auto-detection ('qbcore', 'qbox', 'esx', or 'auto')
+-- 'auto' will automatically detect which framework is running
 Config.Framework = 'auto'
 
 -- Show logo at top center
-Config.ShowLogo = true
+Config.ShowLogo = false
