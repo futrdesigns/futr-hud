@@ -1,47 +1,85 @@
 local QBCore = nil
+local ESX = nil
 local PlayerData = {}
 local isLoggedIn = false
+local Framework = nil
 
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
     
-    if GetResourceState('qb-core') == 'started' then
+    if Config.Framework == 'qbcore' or (Config.Framework == 'auto' and GetResourceState('qb-core') == 'started') then
         QBCore = exports['qb-core']:GetCoreObject()
-    elseif GetResourceState('qbx_core') == 'started' then
+        Framework = 'qbcore'
+        print('[HUD] QBCore framework detected')
+    elseif Config.Framework == 'qbox' or (Config.Framework == 'auto' and GetResourceState('qbx_core') == 'started') then
         QBCore = exports.qbx_core:GetCoreObject()
+        Framework = 'qbox'
+        print('[HUD] QBox framework detected')
+    elseif Config.Framework == 'esx' or (Config.Framework == 'auto' and GetResourceState('es_extended') == 'started') then
+        ESX = exports['es_extended']:getSharedObject()
+        Framework = 'esx'
+        print('[HUD] ESX framework detected')
+    else
+        print('[HUD] No framework detected, using standalone mode')
+        Framework = 'standalone'
     end
     
-    if QBCore then
+    if Framework == 'qbcore' or Framework == 'qbox' then
         Citizen.Wait(500)
         PlayerData = QBCore.Functions.GetPlayerData()
         if PlayerData and next(PlayerData) ~= nil then
             isLoggedIn = true
             SendNUIMessage({status = 'visible', data = true})
         end
+    elseif Framework == 'esx' then
+        Citizen.Wait(500)
+        PlayerData = ESX.GetPlayerData()
+        if PlayerData and PlayerData.job then
+            isLoggedIn = true
+            SendNUIMessage({status = 'visible', data = true})
+        end
     end
 end)
 
-RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
-    PlayerData = QBCore.Functions.GetPlayerData()
-    isLoggedIn = true
-    SendNUIMessage({status = 'visible', data = true})
-end)
+if Framework == 'qbcore' or Framework == 'qbox' then
+    RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+        PlayerData = QBCore.Functions.GetPlayerData()
+        isLoggedIn = true
+        SendNUIMessage({status = 'visible', data = true})
+    end)
 
-RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
-    PlayerData = {}
-    isLoggedIn = false
-    SendNUIMessage({status = 'visible', data = false})
-end)
+    RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+        PlayerData = {}
+        isLoggedIn = false
+        SendNUIMessage({status = 'visible', data = false})
+    end)
 
-RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
-    PlayerData = val
-end)
+    RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
+        PlayerData = val
+    end)
+elseif Framework == 'esx' then
+    RegisterNetEvent('esx:playerLoaded', function(xPlayer)
+        PlayerData = xPlayer
+        isLoggedIn = true
+        SendNUIMessage({status = 'visible', data = true})
+    end)
+
+    RegisterNetEvent('esx:onPlayerLogout', function()
+        PlayerData = {}
+        isLoggedIn = false
+        SendNUIMessage({status = 'visible', data = false})
+    end)
+
+    RegisterNetEvent('esx:setJob', function(job)
+        PlayerData.job = job
+    end)
+end
 
 Citizen.CreateThread(function()
     while true do
         Citizen.Wait(1000)
         
-        if isLoggedIn and QBCore then
+        if isLoggedIn then
             local player = PlayerPedId()
             local health = GetEntityHealth(player) - 100
             local armour = GetPedArmour(player)
@@ -51,9 +89,18 @@ Citizen.CreateThread(function()
             local hunger = 100
             local thirst = 100
             
-            if PlayerData.metadata then
-                hunger = PlayerData.metadata["hunger"] or 100
-                thirst = PlayerData.metadata["thirst"] or 100
+            if Framework == 'qbcore' or Framework == 'qbox' then
+                if PlayerData.metadata then
+                    hunger = PlayerData.metadata["hunger"] or 100
+                    thirst = PlayerData.metadata["thirst"] or 100
+                end
+            elseif Framework == 'esx' then
+                TriggerEvent('esx_status:getStatus', 'hunger', function(status)
+                    if status then hunger = status.getPercent() end
+                end)
+                TriggerEvent('esx_status:getStatus', 'thirst', function(status)
+                    if status then thirst = status.getPercent() end
+                end)
             end
             
             SendNUIMessage({
@@ -71,16 +118,35 @@ Citizen.CreateThread(function()
             local cash = 0
             local bank = 0
             
-            if PlayerData.job then
-                job = PlayerData.job.label or "Unemployed"
-                if PlayerData.job.grade and PlayerData.job.grade.name then
-                    job = job .. " - " .. PlayerData.job.grade.name
+            if Framework == 'qbcore' or Framework == 'qbox' then
+                if PlayerData.job then
+                    job = PlayerData.job.label or "Unemployed"
+                    if PlayerData.job.grade and PlayerData.job.grade.name then
+                        job = job .. " - " .. PlayerData.job.grade.name
+                    end
                 end
-            end
-            
-            if PlayerData.money then
-                cash = PlayerData.money["cash"] or 0
-                bank = PlayerData.money["bank"] or 0
+                
+                if PlayerData.money then
+                    cash = PlayerData.money["cash"] or 0
+                    bank = PlayerData.money["bank"] or 0
+                end
+            elseif Framework == 'esx' then
+                if PlayerData.job then
+                    job = PlayerData.job.label or "Unemployed"
+                    if PlayerData.job.grade_label then
+                        job = job .. " - " .. PlayerData.job.grade_label
+                    end
+                end
+                
+                if PlayerData.accounts then
+                    for _, account in pairs(PlayerData.accounts) do
+                        if account.name == 'money' then
+                            cash = account.money
+                        elseif account.name == 'bank' then
+                            bank = account.money
+                        end
+                    end
+                end
             end
             
             SendNUIMessage({
@@ -133,11 +199,12 @@ function GetDirection()
 end
 
 Citizen.CreateThread(function()
+
     while not NetworkIsPlayerActive(PlayerId()) do
         Wait(100)
     end
     
-    Wait(2000)
+    Wait(2000) 
     
     SendNUIMessage({
         status = 'location',
@@ -149,7 +216,7 @@ Citizen.CreateThread(function()
     })
     
     while true do
-        Wait(250) 
+        Wait(250)
         
         local player = PlayerPedId()
         
@@ -300,11 +367,11 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(0)
         
-        HideHudComponentThisFrame(3)
-        HideHudComponentThisFrame(4) 
+        HideHudComponentThisFrame(3) 
+        HideHudComponentThisFrame(4)
         HideHudComponentThisFrame(6)  
         HideHudComponentThisFrame(7) 
-        HideHudComponentThisFrame(8)
+        HideHudComponentThisFrame(8) 
         HideHudComponentThisFrame(9) 
         HideHudComponentThisFrame(13)
         
