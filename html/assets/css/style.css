@@ -64,6 +64,28 @@ body{
 	font-size: 0.7vw;
 }
 
+/* Clock Item */
+.clock-item {
+	background: linear-gradient(to left, rgba(88, 74, 125, 0) 0%, rgba(88, 74, 125, 0.9) 100%);
+	justify-content: center;
+	width: 4.2vw;
+	min-width: fit-content;
+	font-variant-numeric: tabular-nums;
+	padding: 0.35vw 0.7vw;
+}
+
+.clock-item i {
+	font-size: 0.75vw;
+	flex-shrink: 0;
+}
+
+#clock-time {
+	font-size: 0.7vw;
+	font-weight: 700;
+	letter-spacing: 0.05vw;
+	white-space: nowrap;
+}
+
 .id-item {
 	background: linear-gradient(to left, rgba(50, 70, 100, 0) 0%, rgba(50, 70, 100, 0.9) 100%);
 }
