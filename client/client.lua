@@ -4,6 +4,34 @@ local PlayerData = {}
 local isLoggedIn = false
 local Framework = nil
 
+local function GetTimezoneOffset(timezone)
+    local timezones = {
+        ['GMT'] = 0,
+        ['UTC'] = 0,
+        ['BST'] = 1, -- British Summer Time
+        ['EST'] = -5,
+        ['EDT'] = -4, -- Eastern Daylight Time
+        ['CST'] = -6,
+        ['CDT'] = -5, -- Central Daylight Time
+        ['MST'] = -7,
+        ['MDT'] = -6, -- Mountain Daylight Time
+        ['PST'] = -8,
+        ['PDT'] = -7, -- Pacific Daylight Time
+        ['AKST'] = -9,
+        ['AKDT'] = -8, -- Alaska Daylight Time
+        ['HST'] = -10,
+        ['CET'] = 1, -- Central European Time
+        ['CEST'] = 2, -- Central European Summer Time
+        ['EET'] = 2, -- Eastern European Time
+        ['EEST'] = 3, -- Eastern European Summer Time
+        ['JST'] = 9, -- Japan Standard Time
+        ['AEST'] = 10, -- Australian Eastern Standard Time
+        ['AEDT'] = 11, -- Australian Eastern Daylight Time
+    }
+    
+    return timezones[string.upper(timezone)] or 0
+end
+
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
     
@@ -24,60 +52,91 @@ Citizen.CreateThread(function()
         Framework = 'standalone'
     end
     
+    while not NetworkIsPlayerActive(PlayerId()) do
+        Wait(100)
+    end
+    
+    Wait(2000)
+    
     if Framework == 'qbcore' or Framework == 'qbox' then
-        Citizen.Wait(500)
         PlayerData = QBCore.Functions.GetPlayerData()
         if PlayerData and next(PlayerData) ~= nil then
             isLoggedIn = true
             SendNUIMessage({status = 'visible', data = true})
         end
     elseif Framework == 'esx' then
-        Citizen.Wait(500)
         PlayerData = ESX.GetPlayerData()
         if PlayerData and PlayerData.job then
             isLoggedIn = true
             SendNUIMessage({status = 'visible', data = true})
         end
+    else
+        isLoggedIn = true
+        SendNUIMessage({status = 'visible', data = true})
     end
 end)
 
-if Framework == 'qbcore' or Framework == 'qbox' then
-    RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', function()
+    if Framework == 'qbcore' or Framework == 'qbox' then
+        Wait(1000)
         PlayerData = QBCore.Functions.GetPlayerData()
         isLoggedIn = true
         SendNUIMessage({status = 'visible', data = true})
-    end)
+    end
+end)
 
-    RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+RegisterNetEvent('QBCore:Client:OnPlayerUnload', function()
+    if Framework == 'qbcore' or Framework == 'qbox' then
         PlayerData = {}
         isLoggedIn = false
         SendNUIMessage({status = 'visible', data = false})
-    end)
+    end
+end)
 
-    RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
+RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
+    if Framework == 'qbcore' or Framework == 'qbox' then
         PlayerData = val
-    end)
-elseif Framework == 'esx' then
-    RegisterNetEvent('esx:playerLoaded', function(xPlayer)
+    end
+end)
+
+RegisterNetEvent('esx:playerLoaded', function(xPlayer)
+    if Framework == 'esx' then
+        Wait(1000)
         PlayerData = xPlayer
         isLoggedIn = true
         SendNUIMessage({status = 'visible', data = true})
-    end)
+    end
+end)
 
-    RegisterNetEvent('esx:onPlayerLogout', function()
+RegisterNetEvent('esx:onPlayerLogout', function()
+    if Framework == 'esx' then
         PlayerData = {}
         isLoggedIn = false
         SendNUIMessage({status = 'visible', data = false})
-    end)
+    end
+end)
 
-    RegisterNetEvent('esx:setJob', function(job)
+RegisterNetEvent('esx:setJob', function(job)
+    if Framework == 'esx' then
         PlayerData.job = job
-    end)
-end
+    end
+end)
+
+RegisterNetEvent('hud:client:OnMoneyChange', function(type, amount, reason)
+    if Framework == 'qbcore' or Framework == 'qbox' then
+        PlayerData = QBCore.Functions.GetPlayerData()
+    end
+end)
+
+RegisterNetEvent('QBCore:Player:SetPlayerData', function(val)
+    if Framework == 'qbcore' or Framework == 'qbox' then
+        PlayerData = val
+    end
+end)
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(1000)
+        Citizen.Wait(500)
         
         if isLoggedIn then
             local player = PlayerPedId()
@@ -90,11 +149,15 @@ Citizen.CreateThread(function()
             local thirst = 100
             
             if Framework == 'qbcore' or Framework == 'qbox' then
+                PlayerData = QBCore.Functions.GetPlayerData()
+                
                 if PlayerData.metadata then
                     hunger = PlayerData.metadata["hunger"] or 100
                     thirst = PlayerData.metadata["thirst"] or 100
                 end
             elseif Framework == 'esx' then
+                PlayerData = ESX.GetPlayerData()
+                
                 TriggerEvent('esx_status:getStatus', 'hunger', function(status)
                     if status then hunger = status.getPercent() end
                 end)
@@ -199,12 +262,11 @@ function GetDirection()
 end
 
 Citizen.CreateThread(function()
-
     while not NetworkIsPlayerActive(PlayerId()) do
         Wait(100)
     end
     
-    Wait(2000) 
+    Wait(2000)
     
     SendNUIMessage({
         status = 'location',
@@ -368,11 +430,11 @@ Citizen.CreateThread(function()
         Citizen.Wait(0)
         
         HideHudComponentThisFrame(3) 
-        HideHudComponentThisFrame(4)
-        HideHudComponentThisFrame(6)  
-        HideHudComponentThisFrame(7) 
+        HideHudComponentThisFrame(4) 
+        HideHudComponentThisFrame(6) 
+        HideHudComponentThisFrame(7)  
         HideHudComponentThisFrame(8) 
-        HideHudComponentThisFrame(9) 
+        HideHudComponentThisFrame(9)  
         HideHudComponentThisFrame(13)
         
         DisplayAmmoThisFrame(false)
@@ -489,6 +551,50 @@ end)
 function GetAmmoInClip(ped, weaponHash)
     local ammoClip = Citizen.InvokeNative(0x2E1202248937775C, ped, weaponHash, Citizen.PointerValueInt())
     return ammoClip
+end
+
+if Config.ShowClock then
+    Citizen.CreateThread(function()
+        while true do
+            Citizen.Wait(1000)
+            
+            if isLoggedIn then
+                local hours = GetClockHours()
+                local minutes = GetClockMinutes()
+                local seconds = GetClockSeconds()
+                
+                local offset = GetTimezoneOffset(Config.TimeZone)
+                hours = hours + offset
+                
+                if hours >= 24 then
+                    hours = hours - 24
+                elseif hours < 0 then
+                    hours = hours + 24
+                end
+                
+                local ampm = ""
+                
+                if Config.ClockFormat == '12' then
+                    ampm = hours >= 12 and " PM" or " AM"
+                    hours = hours % 12
+                    if hours == 0 then hours = 12 end
+                end
+                
+                local timeString = string.format("%02d:%02d", hours, minutes)
+                if Config.ShowSeconds then
+                    timeString = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+                end
+                timeString = timeString .. ampm
+                
+                SendNUIMessage({
+                    status = 'clock',
+                    data = {
+                        time = timeString
+                    }
+                })
+            end
+        end
+    end)
 end
 
 RegisterCommand('hudloc', function()
