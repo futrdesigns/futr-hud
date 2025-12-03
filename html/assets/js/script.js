@@ -133,25 +133,24 @@ window.addEventListener('message', (event) => {
 	}
 	
 	if (status == "seatbelt"){
-		const seatbeltIndicator = $(".seatbelt-indicator")
+		const seatbeltIndicator = $(".item.seatbelt-indicator")
 		
 		if (data.show) {
 			seatbeltIndicator.addClass("show")
 			
+			seatbeltIndicator.removeClass("on warn")
+			
 			if (data.on) {
 				seatbeltIndicator.addClass("on")
-				seatbeltIndicator.removeClass("warn")
 			} else if (data.warn) {
-				seatbeltIndicator.removeClass("on")
 				seatbeltIndicator.addClass("warn")
-			} else {
-				seatbeltIndicator.removeClass("on")
-				seatbeltIndicator.removeClass("warn")
 			}
 		} else {
-			seatbeltIndicator.removeClass("show")
-			seatbeltIndicator.removeClass("on")
-			seatbeltIndicator.removeClass("warn")
+			seatbeltIndicator.removeClass("show on warn")
 		}
+	}
+	
+	if (status == "clock"){
+		$("#clock-time").text(data.time)
 	}
 })
