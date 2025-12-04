@@ -38,6 +38,69 @@ function formatNumber(num) {
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
+function getTimezoneOffset(timezone) {
+    const timezones = {
+        'GMT': 0, 'UTC': 0, 'BST': 1,
+        'EST': -5, 'EDT': -4,
+        'CST': -6, 'CDT': -5,
+        'MST': -7, 'MDT': -6,
+        'PST': -8, 'PDT': -7,
+        'AKST': -9, 'AKDT': -8,
+        'HST': -10,
+        'CET': 1, 'CEST': 2,
+        'EET': 2, 'EEST': 3,
+        'JST': 9,
+        'AEST': 10, 'AEDT': 11
+    };
+    return timezones[timezone.toUpperCase()] || 0;
+}
+
+let clockInterval = null;
+let clockConfig = {
+    timezone: 'GMT',
+    format: '24',
+    showSeconds: false
+};
+
+function updateClock() {
+    const now = new Date();
+    const offset = getTimezoneOffset(clockConfig.timezone);
+    
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const targetTime = new Date(utc + (3600000 * offset));
+    
+    let hours = targetTime.getHours();
+    const minutes = targetTime.getMinutes();
+    const seconds = targetTime.getSeconds();
+    let ampm = "";
+    
+    if (clockConfig.format === '12') {
+        ampm = hours >= 12 ? " PM" : " AM";
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+    }
+    
+    let timeString = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+    if (clockConfig.showSeconds) {
+        timeString += ':' + String(seconds).padStart(2, '0');
+    }
+    timeString += ampm;
+    
+    $("#clock-time").text(timeString);
+}
+
+function startClock(timezone, format, showSeconds) {
+    clockConfig = { timezone, format, showSeconds };
+    
+    if (clockInterval) {
+        clearInterval(clockInterval);
+    }
+    
+    updateClock();
+    
+    clockInterval = setInterval(updateClock, 1000);
+}
+
 window.addEventListener('message', (event) => {
 	const status = event.data.status
 	const data = event.data.data
@@ -97,8 +160,19 @@ window.addEventListener('message', (event) => {
 		}
 		$("#player-job").text(jobText)
 		
-		$("#player-cash").text(formatNumber(data.cash))
-		$("#player-bank").text(formatNumber(data.bank))
+		if (data.cash > 0) {
+			$(".cash-item").show()
+			$("#player-cash").text(formatNumber(data.cash))
+		} else {
+			$(".cash-item").hide()
+		}
+		
+		if (data.bank > 0) {
+			$(".bank-item").show()
+			$("#player-bank").text(formatNumber(data.bank))
+		} else {
+			$(".bank-item").hide()
+		}
 	}
 	
 	if (status == "voice"){
@@ -148,6 +222,10 @@ window.addEventListener('message', (event) => {
 		} else {
 			seatbeltIndicator.removeClass("show on warn")
 		}
+	}
+	
+	if (status == "requestTime"){
+		startClock(data.timezone, data.format, data.showSeconds)
 	}
 	
 	if (status == "clock"){
