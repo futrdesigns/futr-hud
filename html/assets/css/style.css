@@ -66,9 +66,9 @@ body{
 
 /* Clock Item */
 .clock-item {
-	background: linear-gradient(to left, rgba(88, 74, 125, 0) 0%, rgba(88, 74, 125, 0.9) 100%);
+	background: linear-gradient(to left, rgba(60, 80, 110, 0) 0%, rgba(60, 80, 110, 0.9) 100%);
 	justify-content: center;
-	width: 4.2vw;
+	width: 4.4vw;
 	min-width: fit-content;
 	font-variant-numeric: tabular-nums;
 	padding: 0.35vw 0.7vw;
