@@ -4,34 +4,6 @@ local PlayerData = {}
 local isLoggedIn = false
 local Framework = nil
 
-local function GetTimezoneOffset(timezone)
-    local timezones = {
-        ['GMT'] = 0,
-        ['UTC'] = 0,
-        ['BST'] = 1, -- British Summer Time
-        ['EST'] = -5,
-        ['EDT'] = -4, -- Eastern Daylight Time
-        ['CST'] = -6,
-        ['CDT'] = -5, -- Central Daylight Time
-        ['MST'] = -7,
-        ['MDT'] = -6, -- Mountain Daylight Time
-        ['PST'] = -8,
-        ['PDT'] = -7, -- Pacific Daylight Time
-        ['AKST'] = -9,
-        ['AKDT'] = -8, -- Alaska Daylight Time
-        ['HST'] = -10,
-        ['CET'] = 1, -- Central European Time
-        ['CEST'] = 2, -- Central European Summer Time
-        ['EET'] = 2, -- Eastern European Time
-        ['EEST'] = 3, -- Eastern European Summer Time
-        ['JST'] = 9, -- Japan Standard Time
-        ['AEST'] = 10, -- Australian Eastern Standard Time
-        ['AEDT'] = 11, -- Australian Eastern Daylight Time
-    }
-    
-    return timezones[string.upper(timezone)] or 0
-end
-
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
     
@@ -559,37 +531,13 @@ if Config.ShowClock then
             Citizen.Wait(1000)
             
             if isLoggedIn then
-                local hours = GetClockHours()
-                local minutes = GetClockMinutes()
-                local seconds = GetClockSeconds()
-                
-                local offset = GetTimezoneOffset(Config.TimeZone)
-                hours = hours + offset
-                
-                if hours >= 24 then
-                    hours = hours - 24
-                elseif hours < 0 then
-                    hours = hours + 24
-                end
-                
-                local ampm = ""
-                
-                if Config.ClockFormat == '12' then
-                    ampm = hours >= 12 and " PM" or " AM"
-                    hours = hours % 12
-                    if hours == 0 then hours = 12 end
-                end
-                
-                local timeString = string.format("%02d:%02d", hours, minutes)
-                if Config.ShowSeconds then
-                    timeString = string.format("%02d:%02d:%02d", hours, minutes, seconds)
-                end
-                timeString = timeString .. ampm
-                
+                -- Get real system time using JavaScript
                 SendNUIMessage({
-                    status = 'clock',
+                    status = 'requestTime',
                     data = {
-                        time = timeString
+                        timezone = Config.TimeZone,
+                        format = Config.ClockFormat,
+                        showSeconds = Config.ShowSeconds
                     }
                 })
             end
