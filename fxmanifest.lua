@@ -4,7 +4,7 @@ lua54 'yes'
 
 author 'futrdesigns'
 description 'Simple HUD with Player Info'
-version '1.0.3'
+version '1.0.4'
 
 shared_scripts {
     'config.lua'
