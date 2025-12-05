@@ -35,16 +35,27 @@ Citizen.CreateThread(function()
         if PlayerData and next(PlayerData) ~= nil then
             isLoggedIn = true
             SendNUIMessage({status = 'visible', data = true})
+            print('[HUD] Player logged in (QBCore/QBox)')
         end
     elseif Framework == 'esx' then
         PlayerData = ESX.GetPlayerData()
         if PlayerData and PlayerData.job then
             isLoggedIn = true
             SendNUIMessage({status = 'visible', data = true})
+            print('[HUD] Player logged in (ESX)')
+        else
+            Wait(2000)
+            PlayerData = ESX.GetPlayerData()
+            if PlayerData and PlayerData.job then
+                isLoggedIn = true
+                SendNUIMessage({status = 'visible', data = true})
+                print('[HUD] Player logged in (ESX - delayed)')
+            end
         end
     else
         isLoggedIn = true
         SendNUIMessage({status = 'visible', data = true})
+        print('[HUD] Player logged in (Standalone)')
     end
 end)
 
@@ -138,13 +149,19 @@ Citizen.CreateThread(function()
                 end)
             end
             
+            local stamina = 100 - GetPlayerSprintStaminaRemaining(PlayerId())
+            local isRunning = IsPedRunning(player) or IsPedSprinting(player)
+            local showStamina = isRunning and stamina > 5
+            
             SendNUIMessage({
                 status = 'info',
                 data = {
                     health = health,
                     armour = armour,
                     food = hunger,
-                    water = thirst
+                    water = thirst,
+                    stamina = stamina,
+                    showStamina = showStamina
                 }
             })
             
@@ -190,7 +207,9 @@ Citizen.CreateThread(function()
                     id = playerId,
                     job = job,
                     cash = cash,
-                    bank = bank
+                    bank = bank,
+                    hideCashWhenZero = Config.HideCashWhenZero,
+                    hideBankWhenZero = Config.HideBankWhenZero
                 }
             })
         end
@@ -307,6 +326,14 @@ Citizen.CreateThread(function()
             local player = PlayerPedId()
             local inVehicle = IsPedInAnyVehicle(player, false)
             
+            local shouldShowMinimap = Config.AlwaysShowMinimap or inVehicle
+            SendNUIMessage({
+                status = 'minimap',
+                data = {
+                    visible = shouldShowMinimap
+                }
+            })
+            
             if inVehicle then
                 local vehicle = GetVehiclePedIsIn(player, false)
                 if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == player then
@@ -412,17 +439,24 @@ Citizen.CreateThread(function()
         DisplayAmmoThisFrame(false)
         DisplaySniperScopeThisFrame(false)
         
-        DisplayRadar(true)
+        if Config.AlwaysShowMinimap then
+            DisplayRadar(true)
+        else
+            local player = PlayerPedId()
+            local inVehicle = IsPedInAnyVehicle(player, false)
+            DisplayRadar(inVehicle)
+        end
     end
 end)
 
 local seatbeltOn = false
 local inVehicleWithBelt = false
 local lastSoundTime = 0
+local seatbeltSoundId = nil
 
 Citizen.CreateThread(function()
     while true do
-        Citizen.Wait(1000)
+        Citizen.Wait(500)
         
         if isLoggedIn then
             local player = PlayerPedId()
@@ -438,7 +472,7 @@ Citizen.CreateThread(function()
                     
                     if shouldWarn then
                         local currentTime = GetGameTimer()
-                        if currentTime - lastSoundTime > 5000 then
+                        if currentTime - lastSoundTime > 3000 then
                             PlaySoundFrontend(-1, "NAV_UP_DOWN", "HUD_FRONTEND_DEFAULT_SOUNDSET", 1)
                             lastSoundTime = currentTime
                         end
@@ -531,7 +565,6 @@ if Config.ShowClock then
             Citizen.Wait(1000)
             
             if isLoggedIn then
-                -- Get real system time using JavaScript
                 SendNUIMessage({
                     status = 'requestTime',
                     data = {
