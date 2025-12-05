@@ -117,6 +117,19 @@ window.addEventListener('message', (event) => {
 		else{hide_hud()}
 	}
 	
+	if (status == "minimap"){
+		const locationDisplay = $(".location-display")
+		const minimapBorder = $(".minimap-border")
+		
+		if (data.visible) {
+			locationDisplay.removeClass("no-minimap")
+			minimapBorder.removeClass("hidden")
+		} else {
+			locationDisplay.addClass("no-minimap")
+			minimapBorder.addClass("hidden")
+		}
+	}
+	
 	if (status == "speedometer"){
 		const visible = data.visible
 		if (!visible){
