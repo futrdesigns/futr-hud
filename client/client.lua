@@ -4,6 +4,14 @@ local PlayerData = {}
 local isLoggedIn = false
 local Framework = nil
 
+local hudPositions = {
+    playerInfo = { x = 0.5, y = 2.2 },
+    location = { x = 1.6, y = 11.7 },
+    stats = { x = 50, y = 2.5 },
+}
+
+local editMode = false
+
 Citizen.CreateThread(function()
     Citizen.Wait(1000)
     
@@ -56,6 +64,16 @@ Citizen.CreateThread(function()
         isLoggedIn = true
         SendNUIMessage({status = 'visible', data = true})
         print('[HUD] Player logged in (Standalone)')
+    end
+    
+    Wait(1000)
+    local savedPositions = GetResourceKvpString('hud_positions')
+    if savedPositions then
+        hudPositions = json.decode(savedPositions)
+        SendNUIMessage({
+            status = 'updatePositions',
+            data = hudPositions
+        })
     end
 end)
 
@@ -607,3 +625,96 @@ RegisterCommand('hudloc', function()
         }
     })
 end, false)
+
+function SaveHudPositions()
+    SetResourceKvp('hud_positions', json.encode(hudPositions))
+end
+
+RegisterCommand('hud', function()
+    editMode = not editMode
+    if editMode and not Config.AlwaysShowMinimap then
+        DisplayRadar(true)
+    end
+    
+    SendNUIMessage({
+        status = 'toggleEditMode',
+        data = {
+            enabled = editMode,
+            positions = hudPositions,
+            allowLocationMove = Config.AlwaysShowMinimap
+        }
+    })
+    
+    SetNuiFocus(editMode, editMode)
+    
+    if editMode then
+        TriggerEvent('chat:addMessage', {
+            color = { 34, 197, 94 },
+            multiline = false,
+            args = { "[HUD]", "Edit mode enabled. Drag elements to reposition them. Type /hud again to save." }
+        })
+    else
+        TriggerEvent('chat:addMessage', {
+            color = { 34, 197, 94 },
+            multiline = false,
+            args = { "[HUD]", "Positions saved!" }
+        })
+    end
+end, false)
+
+RegisterCommand('hudreset', function()
+    hudPositions = {
+        playerInfo = { x = 0.5, y = 2.2 },
+        location = { x = 1.6, y = 11.7 },
+        stats = { x = 50, y = 2.5 },
+    }
+    
+    SaveHudPositions()
+    
+    SendNUIMessage({
+        status = 'updatePositions',
+        data = hudPositions
+    })
+    
+    TriggerEvent('chat:addMessage', {
+        color = { 34, 197, 94 },
+        multiline = false,
+        args = { "[HUD]", "HUD positions reset to default!" }
+    })
+end, false)
+
+RegisterNUICallback('updatePosition', function(data, cb)
+    if data.element and hudPositions[data.element] then
+        hudPositions[data.element] = data.position
+        SaveHudPositions()
+    end
+    cb('ok')
+end)
+
+RegisterNUICallback('closeEditMode', function(data, cb)
+    editMode = false
+    SetNuiFocus(false, false)
+    
+    if not Config.AlwaysShowMinimap then
+        local player = PlayerPedId()
+        local inVehicle = IsPedInAnyVehicle(player, false)
+        DisplayRadar(inVehicle)
+    end
+    
+    SendNUIMessage({
+        status = 'toggleEditMode',
+        data = {
+            enabled = false,
+            positions = hudPositions,
+            allowLocationMove = Config.AlwaysShowMinimap
+        }
+    })
+    
+    TriggerEvent('chat:addMessage', {
+        color = { 34, 197, 94 },
+        multiline = false,
+        args = { "[HUD]", "Positions saved!" }
+    })
+    
+    cb('ok')
+end)
