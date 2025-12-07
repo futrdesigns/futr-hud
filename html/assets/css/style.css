@@ -6,9 +6,102 @@ body{
 	overflow: hidden;
 }
 
+/* EDIT MODE STYLES */
+.edit-mode-overlay {
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(0, 0, 0, 0.4);
+	backdrop-filter: blur(3px);
+	z-index: 9998;
+	pointer-events: none;
+}
+
+.edit-mode-overlay.active {
+	display: block;
+}
+
+.edit-mode-info {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: rgba(30, 35, 45, 0.95);
+	padding: 2vw 3vw;
+	border-radius: 0.5vw;
+	color: white;
+	text-align: center;
+	font-size: 0.9vw;
+	box-shadow: 0 0 2vw rgba(0, 0, 0, 0.5);
+	pointer-events: all;
+}
+
+.edit-mode-info h2 {
+	font-size: 1.5vw;
+	font-weight: 800;
+	margin-bottom: 1vw;
+	color: #22c55e;
+}
+
+.edit-mode-info p {
+	margin: 0.5vw 0;
+	font-weight: 600;
+}
+
+.edit-mode-info button {
+	margin-top: 1.5vw;
+	padding: 0.6vw 1.5vw;
+	background: #22c55e;
+	color: white;
+	border: none;
+	border-radius: 0.3vw;
+	font-size: 0.85vw;
+	font-weight: 700;
+	cursor: pointer;
+	transition: background 0.2s;
+}
+
+.edit-mode-info button:hover {
+	background: #16a34a;
+}
+
+.draggable {
+	cursor: move;
+	transition: none !important;
+	user-select: none;
+}
+
+.draggable:hover {
+	filter: brightness(1.2);
+	outline: 2px dashed rgba(34, 197, 94, 0.5);
+	outline-offset: 0.3vw;
+}
+
+.draggable.dragging {
+	opacity: 0.8;
+	z-index: 9999 !important;
+	outline: 2px solid #22c55e;
+	outline-offset: 0.3vw;
+}
+
+.draggable.locked {
+	cursor: not-allowed;
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.draggable.locked:hover {
+	filter: none;
+	outline: none;
+}
+
+/* ORIGINAL HUD STYLES */
 .logo-container {
 	position: absolute;
-	top: 1vw;
+	top: 0.3vw;
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 100;
